@@ -1,4 +1,4 @@
-import XLSX from 'xlsx';
+import xlsx from 'xlsx';
 
 function s2ab(s) { //字符串转字符流
   let buf = new ArrayBuffer(s.length);
@@ -94,7 +94,7 @@ function format2WB(sheetData, title, wb, ref) {
 function format2Blob(wb, type) {
   /* 这里的数据是用来定义导出的格式类型 */
   let option = { bookType: (type === undefined ? 'xlsx' : type), bookSST: false, type: 'binary' };
-  return new Blob([s2ab(XLSX.write(wb, option))], { type: "" });
+  return new Blob([s2ab(xlsx.write(wb, option))], { type: "" });
 };
 /**
  * @desc 创建下载连接，并下载
@@ -112,21 +112,6 @@ function saveAs(url, name) {
   document.body.removeChild(link);
 };
 /**
- * @desc 导出json数据为表格
- * @param {String} fileName 导出文件名
- * @param {String} sheetName 工作簿名
- * @param {Array} values 数据
- * @param {Array} titles 表头数据
- */
-function jsonToExcel({ fileName = 'download.xlsx', sheetName = 'Sheet1', values = [], titles = [] }){
-  let data = [];
-  let res = {};
-  values.forEach(item => data.push(setObj(item, titles)));
-  if (values.length >  0) data.push(setObj({}, titles));
-  res[sheetName] = data;
-  saveAs(URL.createObjectURL(exportTable(res)), fileName);
-};
-/**
  * @description 将数组转为对象
  * @param {String} item 数据对象
  * @param {Array} titles 表头
@@ -136,5 +121,47 @@ function setObj(item, titles) {
   titles.forEach(title => colum[title.name] = item[title.value] || '');
   return colum;
 }
-
-export default jsonToExcel;
+/**
+ * @desc 导出json数据为表格
+ * @param {String} fileName 导出文件名
+ * @param {String} sheetName 工作簿名
+ * @param {Array} values 数据
+ * @param {Array} titles 表头数据
+ */
+export function jsonToExcel({ fileName = 'download.xlsx', sheetName = 'Sheet1', values = [], titles = [] }){
+  let data = [];
+  let res = {};
+  values.forEach(item => data.push(setObj(item, titles)));
+  if (values.length >  0) data.push(setObj({}, titles));
+  res[sheetName] = data;
+  saveAs(URL.createObjectURL(exportTable(res)), fileName);
+};
+/**
+ * @description Excel 導入
+ * @param {File} file 文件對象
+ * @param {Array} dicList 鍵名對象列表 [{ name: '' , key: ''}]
+ * @returns {Array} Promise 參數爲轉換結果列表
+ */
+export const excel2json = (file, dicList) => {
+  const option = {
+    type: 'binary'
+  };
+  const parseFile = (file, callback) => {
+    const reader = new FileReader();
+    reader.onload = (e) => callback(e.target.result);
+    reader.readAsBinaryString(file);
+  };
+  const file2binary = file => {
+    return new Promise((resolve) => parseFile(file, resolve));
+  };
+  const mapData = item => {
+    let res = { key: random() };
+    dicList.forEach(dic => res[dic.key] = item[dic.name]);
+    return res;
+  };
+  const wb2Json = (wb) => {
+    const data = xlsx.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    return data.map(mapData);
+  };
+  return file2binary(file).then(binary => wb2Json(xlsx.read(binary, option)));
+};

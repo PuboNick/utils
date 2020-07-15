@@ -118,3 +118,104 @@ export const exitFullscreen = () => {
     document.webkitExitFullscreen();
   }
 };
+/**
+ * @description 去除首尾空格
+ */
+export const trim = (str) => {
+  return str.replace(/(^\s*)|(\s*$)/g, "");
+};
+/**
+ * @description base64轉blob
+ */
+export const base642blob = (dataURI) => {
+  let mimeString = dataURI.split(",")[0].split(":")[1].split(";")[0];
+  let byteString = atob(dataURI.split(",")[1]);
+  let arrayBuffer = new ArrayBuffer(byteString.length);
+  let intArray = new Uint8Array(arrayBuffer);
+  for (let i = 0; i < byteString.length; i++) {
+    intArray[i] = byteString.charCodeAt(i);
+  }
+  let blob = new Blob([intArray], { type: mimeString });
+  return { blob, type: mimeString };
+};
+/**
+ * @description blob轉base64
+ */
+export const blob2base64 = (blob) => {
+  return new Promise((resolve, reject) => {
+    let reader = new FileReader();
+    if (!blob) return reject('文件爲空!');
+    reader.onload = function (e) {
+      resolve(e.target.result);
+    };
+    reader.onabort = function() {
+      reject();
+    }
+    reader.readAsDataURL(blob);
+  });
+};
+/**
+ * @description blob轉file
+ * @param {} data
+ */
+export const blob2file = (blob, name, type) => {
+  return new File(blob, name, { type });
+};
+/**
+ * @description base64轉file
+ * @param {dataurl} dataURI base64數據
+ * @param {string} name 文件名
+ */
+export const base642file = (dataURI, name) => {
+  let { blob, type } = base642blob(dataURI);
+  if (!name) name = `${random()}.${type.split("/")[1]}`;
+  return blob2file([blob], name, type);
+};
+/**
+ * @description 對象轉FormData
+ */
+export const obj2form = (data) => {
+  let results = new FormData();
+  for (const index of Object.keys(data)) {
+    results.append(index, data[index]);
+  }
+  return results;
+};
+/**
+ * @description 獲取某個對象裡的幾個屬性並返回新的對象
+ * @param {Object} obj 原始對象
+ * @param {Array} keys 鍵名列表
+ */
+export const getItemsFormObj = (obj, keys) => {
+  let result = {};
+  for(let key of keys) {
+    if (obj[key] !== undefined) result[key] = obj[key];
+  }
+  return result;
+}
+/**
+ * 判斷一個值是否爲對象
+ * @param obj 任意值
+ */
+export const isObj = (obj) => {
+  return (typeof obj === 'object' || typeof obj === 'function') && obj !== null;
+};
+/**
+ * 複製一個普通對象
+ * @param obj 對象
+ */
+export const clone = (obj) => {
+  let cloneObj;
+  let Constructor = obj.constructor;
+  if (Constructor === RegExp) {
+    cloneObj = new Constructor(obj);
+  } else if (Constructor === Date) {
+    cloneObj = new Constructor(obj.getTime());
+  } else {
+    cloneObj = new Constructor();
+  }
+  for (let key in obj) {
+    cloneObj[key] = isObj(obj[key]) ? clone(obj[key]) : obj[key];
+  }
+  return cloneObj;
+};
